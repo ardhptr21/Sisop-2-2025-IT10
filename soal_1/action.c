@@ -31,6 +31,7 @@ int run_command(const char *cmd, char *const argv[]) {
     }
 }
 
+// A. Downloading the Clues
 void download_and_unzip() {
     struct stat st = {0};
 
@@ -40,8 +41,7 @@ void download_and_unzip() {
     }
 
     printf("Mengunduh Clues.zip...\n");
-//    char *wget_args[] = {"wget", "-q", ZIP_URL, NULL};
-    char *wget_args[] = {"wget", "-q", "-O", ZIP_FILE, ZIP_URL, NULL};  // Unduh dengan nama clues.zip
+    char *wget_args[] = {"wget", "-q", "-O", ZIP_FILE, ZIP_URL, NULL};
     if (!run_command("wget", wget_args)) {
         fprintf(stderr, "Gagal mengunduh Clues.zip\n");
         return;
@@ -58,12 +58,12 @@ void download_and_unzip() {
     printf("Download dan ekstrak selesai.\n");
 }
 
+// B. Filtering the Files
 void filter_files() {
     DIR *dir;
     struct dirent *entry;
 
     mkdir("Filtered", 0755);
-
     const char *subdirs[] = {"Clues/ClueA", "Clues/ClueB", "Clues/ClueC", "Clues/ClueD"};
 
     for (int i = 0; i < 4; ++i) {
@@ -92,6 +92,7 @@ int cmp(const void *a, const void *b) {
     return strcmp(*(const char **)a, *(const char **)b);
 }
 
+// C. Combine the File Content
 void combine_files() {
     DIR *dir = opendir("Filtered");
     struct dirent *entry;
@@ -155,6 +156,7 @@ void combine_files() {
     for (int i = 0; i < l_count; i++) free(letters[i]);
 }
 
+// D. Decode the file
 void rot13_decode() {
     FILE *in = fopen("Combined.txt", "r");
     FILE *out = fopen("Decoded.txt", "w");
@@ -179,14 +181,46 @@ void rot13_decode() {
     printf("Decode ROT13 selesai. Output disimpan di Decoded.txt\n");
 }
 
-void print_usage() {
-    printf("Penggunaan:\n");
-    printf("  ./action            # Download & extract Clues.zip\n");
-    printf("  ./action -m Filter  # Filter file valid ke folder Filtered\n");
-    printf("  ./action -m Combine # Gabungkan isi file ke Combined.txt\n");
-    printf("  ./action -m Decode  # Decode Combined.txt ke Decoded.txt\n");
+// E: Password Check
+void password_check() {
+    FILE *file = fopen("Decoded.txt", "r");
+    if (!file) {
+        fprintf(stderr, "Decoded.txt tidak ditemukan.\n");
+        return;
+    }
+
+    char correct_pass[256];
+    if (!fgets(correct_pass, sizeof(correct_pass), file)) {
+        fclose(file);
+        fprintf(stderr, "Gagal membaca password.\n");
+        return;
+    }
+    fclose(file);
+    correct_pass[strcspn(correct_pass, "\n")] = '\0';
+
+    char input[256];
+    printf("Masukkan password: ");
+    fgets(input, sizeof(input), stdin);
+    input[strcspn(input, "\n")] = '\0';
+
+    if (strcmp(correct_pass, input) == 0) {
+        printf("Password benar! Kamu berhasil membuka pintu Cyrus!\n");
+    } else {
+        printf("Password salah. Coba lagi!\n");
+    }
 }
 
+// Tambahan fitur HELP
+void print_help() {
+    printf("./action -m [command]\n");
+    printf(" Available commands\n");
+    printf("     Filter\n");
+    printf("     Combine\n");
+    printf("     Decode\n");
+    printf("     Check\n");
+}
+
+// Main
 int main(int argc, char *argv[]) {
     if (argc == 1) {
         download_and_unzip();
@@ -197,11 +231,13 @@ int main(int argc, char *argv[]) {
             combine_files();
         } else if (strcmp(argv[2], "Decode") == 0) {
             rot13_decode();
+        } else if (strcmp(argv[2], "Check") == 0) {
+            password_check();
         } else {
-            print_usage();
+            print_help();  // Command tidak dikenali
         }
     } else {
-        print_usage();
+        print_help();      // Format argumen salah
     }
 
     return 0;

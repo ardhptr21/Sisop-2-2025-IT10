@@ -10,9 +10,196 @@
 
 ## Reporting
 
+### Soal 1
+
+#### Penjelasan
+A. Downloading the Clues
+B. Filtering the Files
+C. Combine the File Content
+D. Decode the file
+E. Password Check
+
+##### Help Command
+./action              
+./action -m Filter    
+./action -m Combine   
+./action -m Decode    
+./action -m Check 
+
+A.
+```c
+void download_and_unzip() {
+    struct stat st = {0};
+    if (stat("Clues", &st) == 0 && S_ISDIR(st.st_mode)) return;
+
+    char *wget_args[] = {"wget", "-q", "-O", ZIP_FILE, ZIP_URL, NULL};
+    if (!run_command("wget", wget_args)) return;
+
+    char *unzip_args[] = {"unzip", "-q", ZIP_FILE, NULL};
+    if (!run_command("unzip", unzip_args)) return;
+
+    remove(ZIP_FILE);
+}
+```
+
+B.
+```c
+void filter_files() {
+    DIR *dir;
+    struct dirent *entry;
+
+    mkdir("Filtered", 0755);
+    const char *subdirs[] = {"Clues/ClueA", "Clues/ClueB", "Clues/ClueC", "Clues/ClueD"};
+
+    for (int i = 0; i < 4; ++i) {
+        dir = opendir(subdirs[i]);
+        if (!dir) continue;
+
+        char path[256];
+        while ((entry = readdir(dir))) {
+            if (is_valid_file(entry->d_name)) {
+                snprintf(path, sizeof(path), "%s/%s", subdirs[i], entry->d_name);
+                char dest[256];
+                snprintf(dest, sizeof(dest), "Filtered/%s", entry->d_name);
+                rename(path, dest);
+            } else if (entry->d_type == DT_REG) {
+                snprintf(path, sizeof(path), "%s/%s", subdirs[i], entry->d_name);
+                remove(path);
+            }
+        }
+        closedir(dir);
+    }
+}
+
+int cmp(const void *a, const void *b) {
+    return strcmp(*(const char **)a, *(const char **)b);
+}
+```
+
+C.
+```c
+void combine_files() {
+    DIR *dir = opendir("Filtered");
+    struct dirent *entry;
+    char *numbers[100], *letters[100];
+    int n_count = 0, l_count = 0;
+
+    if (!dir) {
+        fprintf(stderr, "Folder Filtered tidak ditemukan.\n");
+        return;
+    }
+
+    while ((entry = readdir(dir))) {
+        if (is_valid_file(entry->d_name)) {
+            if (isdigit(entry->d_name[0]))
+                numbers[n_count++] = strdup(entry->d_name);
+            else if (isalpha(entry->d_name[0]))
+                letters[l_count++] = strdup(entry->d_name);
+        }
+    }
+    closedir(dir);
+
+    qsort(numbers, n_count, sizeof(char *), cmp);
+    qsort(letters, l_count, sizeof(char *), cmp);
+
+    FILE *out = fopen("Combined.txt", "w");
+    if (!out) {
+        perror("Gagal membuat Combined.txt");
+        return;
+    }
+
+    int ni = 0, li = 0;
+    while (ni < n_count || li < l_count) {
+        if (ni < n_count) {
+            char path[256];
+            snprintf(path, sizeof(path), "Filtered/%s", numbers[ni++]);
+            FILE *f = fopen(path, "r");
+            if (f) {
+                int c;
+                while ((c = fgetc(f)) != EOF) fputc(c, out);
+                fclose(f);
+            }
+            remove(path);
+        }
+        if (li < l_count) {
+            char path[256];
+            snprintf(path, sizeof(path), "Filtered/%s", letters[li++]);
+            FILE *f = fopen(path, "r");
+            if (f) {
+                int c;
+                while ((c = fgetc(f)) != EOF) fputc(c, out);
+                fclose(f);
+            }
+            remove(path);
+        }
+    }
+
+    fclose(out);
+    printf("Isi file telah digabung ke Combined.txt\n");
+
+    for (int i = 0; i < n_count; i++) free(numbers[i]);
+    for (int i = 0; i < l_count; i++) free(letters[i]);
+}
+```
+
+D.
+```c
+void rot13_decode() {
+    FILE *in = fopen("Combined.txt", "r");
+    FILE *out = fopen("Decoded.txt", "w");
+
+    int c;
+    while ((c = fgetc(in)) != EOF) {
+        if (isalpha(c)) {
+            if ((c >= 'a' && c <= 'm') || (c >= 'A' && c <= 'M'))
+                c += 13;
+            else
+                c -= 13;
+        }
+        fputc(c, out);
+    }
+
+    fclose(in);
+    fclose(out);
+}
+```
+
+E.
+```c
+void password_check() {
+    FILE *file = fopen("Decoded.txt", "r");
+    if (!file) {
+        fprintf(stderr, "Decoded.txt tidak ditemukan.\n");
+        return;
+    }
+
+    char correct_pass[256];
+    if (!fgets(correct_pass, sizeof(correct_pass), file)) {
+        fclose(file);
+        fprintf(stderr, "Gagal membaca password.\n");
+        return;
+    }
+    fclose(file);
+    correct_pass[strcspn(correct_pass, "\n")] = '\0';
+
+    char input[256];
+    printf("Masukkan password: ");
+    fgets(input, sizeof(input), stdin);
+    input[strcspn(input, "\n")] = '\0';
+
+    if (strcmp(correct_pass, input) == 0) {
+        printf("Password benar! Kamu berhasil membuka pintu Cyrus!\n");
+    } else {
+        printf("Password salah. Coba lagi!\n");
+    }
+}
+```
+
 ### Soal 2
 
 #### Penjelasan
+
+
 
 ```c
 void daemonize(char *argv0, char *daemonName) {

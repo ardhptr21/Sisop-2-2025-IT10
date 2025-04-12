@@ -34,7 +34,6 @@ void show_process(const char *username){
         exit(EXIT_FAILURE);
     } else if (pid > 0){
         wait(NULL);
-        write_log("list", "RUNNING"); 
     }
 }
 

@@ -110,7 +110,7 @@ void fail_user(const char *username) {
     } 
 }
 
-//revert fail_user()
+//revert kembali proses user 
 void revert_user(const char *username) {
     pid_t pid = fork();
 
@@ -130,7 +130,7 @@ void revert_user(const char *username) {
 void write_log(const char *process_name, const char *status) {
     FILE *log_file = fopen("/home/asuramawaru/debugmon.log", "a");
     if (!log_file) {
-        perror("Gagal membuka debugmon.log");
+        perror("Failed to open debugmon.log");
         return;
     }
 

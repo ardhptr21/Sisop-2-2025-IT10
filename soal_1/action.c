@@ -36,10 +36,7 @@ int run_command(const char *cmd, char *const argv[]) {
 void download_and_unzip() {
     struct stat st = {0};
 
-    if (stat("Clues", &st) == 0 && S_ISDIR(st.st_mode)) {
-        printf("Folder Clues sudah ada. Lewati download.\n");
-        return;
-    }
+    if (stat("Clues", &st) == 0 && S_ISDIR(st.st_mode)) return;
 
     printf("Mengunduh Clues.zip...\n");
     char *wget_args[] = {"wget", "-q", "-O", ZIP_FILE, ZIP_URL, NULL};
@@ -225,6 +222,7 @@ void print_help() {
 int main(int argc, char *argv[]) {
     if (argc == 1) {
         download_and_unzip();
+        print_help();
     } else if (argc == 3 && strcmp(argv[1], "-m") == 0) {
         if (strcmp(argv[2], "Filter") == 0) {
             filter_files();

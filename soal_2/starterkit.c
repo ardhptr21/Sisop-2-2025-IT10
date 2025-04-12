@@ -11,6 +11,8 @@
 #include <time.h>
 #include <unistd.h>
 
+#define FILE_DRIVE "https://drive.google.com/uc?export=download&id=1_5GxIGfQr3mNKuavJbte_AoRkEQLXSKS"
+
 void daemonize(char *argv0, char *daemonName);
 void spawn_process(char *argv0, char *processName, int (*callback)(char *argv0));
 void help();
@@ -21,6 +23,7 @@ int move_files(char *old_folder, char *new_folder);
 int delfiles(char *foldername);
 int shutdown(char *processName);
 void logger(char *message);
+int run_command(char *cmd, char *args[]);
 
 int b64invs[] = {62, -1, -1, -1, 63, 52, 53, 54, 55, 56, 57, 58,
                  59, 60, 61, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4, 5,
@@ -99,40 +102,31 @@ void help() {
     printf("\t--shutdown\n");
 }
 
-int download_cb() {
-    char *wget_args[] = {
-        "wget",
-        "-q",
-        "-O",
-        "starter_kit.zip",
-        "--no-check-certificate",
-        "https://drive.google.com/uc?export=download&id=1_5GxIGfQr3mNKuavJbte_AoRkEQLXSKS",
-        NULL};
-    execvp("wget", wget_args);
-    return 1;
+int run_command(char *cmd, char *args[]) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        execvp(cmd, args);
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    } else {
+        return 0;
+    }
 }
-int extract_cb() {
-    char *unzip_args[] = {
-        "unzip",
-        "-q",
-        "starter_kit.zip",
-        "-d",
-        "starter_kit",
-        NULL};
-    execvp("unzip", unzip_args);
-    return 1;
-}
+
 void download_extract_zip() {
     struct stat st;
     if (stat("starter_kit", &st) == 0 && S_ISDIR(st.st_mode)) return;
     printf("Initializing program, downloading and extract zip...\n");
 
-    spawn_process(NULL, NULL, download_cb);
+    char *wget_args[] = {"wget", "-q", "-O", "starter_kit.zip", "--no-check-certificate", FILE_DRIVE, NULL};
+    run_command("/bin/wget", wget_args);
 
-    int status;
-    wait(&status);
-    spawn_process(NULL, NULL, extract_cb);
-    wait(&status);
+    char *unzip_args[] = {"unzip", "-q", "starter_kit.zip", "-d", "starter_kit", NULL};
+    run_command("/bin/unzip", unzip_args);
+
     remove("starter_kit.zip");
 }
 

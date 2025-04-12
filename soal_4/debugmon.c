@@ -40,13 +40,12 @@ void show_process(const char *username){
 
 //menjalankan daemon
 void run_daemon(const char *username) {
+    write_log("daemon", "RUNNING");
     pid_t pid = fork();
 
     if (pid < 0) {
         exit(EXIT_FAILURE);
-    }
-
-    if (pid > 0) {
+    }  if (pid > 0) {
         exit(EXIT_SUCCESS); 
     }
 
@@ -66,7 +65,7 @@ void run_daemon(const char *username) {
     fclose(stderr);
 
     while (1) {
-        write_log("daemon", "RUNNING"); //write_log GAK MASUK ke debugmon.log
+        write_log("daemon", "RUNNING");
         show_process(username);
         sleep(5);
     }
@@ -96,48 +95,42 @@ void stop_daemon(const char *username) {
     write_log("stop", "RUNNING");
 }
 
-//Menggagalkan semua proses user yang sedang berjalan (pakai akun dummy) masih belum complete
+//Menggagalkan semua proses user yang sedang berjalan (pakai akun dummy)
 void fail_user(const char *username) {
     pid_t pid = fork();
 
     if (pid == 0) {
-        char *args[] = {"pkill", "-u", (char *)username, NULL};
-        execvp("pkill", args);
+        char *args[] = {"killall", "-9", "-u", (char *)username, NULL};
+        execvp("killall", args);
         exit(EXIT_FAILURE);
     } else if (pid > 0) {
         wait(NULL);
-    
-        char flagname[100];
-        snprintf(flagname, sizeof(flagname), "block_%s.flag", username);
-        FILE *flag = fopen(flagname, "w");
-        if (flag) {
-            fprintf(flag, "User %s blocked\n", username);
-            fclose(flag);
-        }
-
         write_log("fail", "FAILED");
-
         printf("Successfuly stop all %s process\n", username);
     } 
 }
 
+//revert fail_user()
 void revert_user(const char *username) {
-    char flagname[100];
-    snprintf(flagname, sizeof(flagname), "block_%s.flag", username);
+    pid_t pid = fork();
 
-    if (remove(flagname) == 0) {
+    if (pid == 0) {
+        char *args[] = {"su", "-", (char *)username, NULL};
+        execvp("su", args);
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        wait(NULL);
         write_log("revert", "RUNNING");
-        printf("Succesfully revert user %s process\n", username);
-    
-    } else {
-        perror("Failed to removed flag");
+        printf("Successfully reverted user %s process\n", username);
     }
 }
 
+
 //merekam ke log
 void write_log(const char *process_name, const char *status) {
-    FILE *log_file = fopen("debugmon.log", "a");
+    FILE *log_file = fopen("/home/asuramawaru/debugmon.log", "a");
     if (!log_file) {
+        perror("Gagal membuka debugmon.log");
         return;
     }
 
@@ -147,7 +140,7 @@ void write_log(const char *process_name, const char *status) {
     char time[32];
 
     strftime(date, sizeof(date), "%d:%m:%Y", t);
-    strftime(time, sizeof(time), "%H:%M:%S", t);
+    strftime(time, sizeof(time), "%H:%M:%S", t); 
 
     fprintf(log_file, "[%s]-[%s]_%s_STATUS(%s)\n", date, time, process_name, status);
     fclose(log_file);
@@ -175,4 +168,3 @@ int main(int argc, char *argv[]) {
 
     return 0;
 }
-

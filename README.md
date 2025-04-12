@@ -198,11 +198,30 @@ void password_check() {
 ```
 
 #### Output
+
+- help
+  
+  ![](assets/soal_1/help.png)
+  
 1. Melakukan inisialisi untuk mendownload ketika tidak ada folder **Clues**
+   
+   ![](assets/soal_1/download_extract.png)
+
 2. Melakukan filterisasi file Valid ke folder Filtered
+
+   ![](assets/soal_1/filter.png)
+   
 3. Menggabungkan isi file ke Combined.txt
+
+   ![](assets/soal_1/combine.png)
+   
 4. Melakukan Decode File Combined.txt (ROT13) lalu dimasukkan ke Decoded.txt
+
+   ![](assets/soal_1/decode.png)
+   
 5. Melakukan Password Checking
+
+   ![](assets/soal_1/password_check.png)
 
 ### Soal 2
 

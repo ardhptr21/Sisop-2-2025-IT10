@@ -906,3 +906,32 @@ void write_log(const char *process_name, const char *status) {
     fclose(log_file);
 }
 ````
+
+
+###output
+
+1. menunjukan semua list proses user
+
+![](assets/soal_4/menampilkan_list.png)
+
+2. melakukan daemon pada user
+
+![](assets/soal_4/daemon.png)
+![](assets/soal_4/daemon.log.png)
+
+3. menghentikan daemon
+
+![](assets/soal_4/stop_daemon.png)
+![](assets/soal_4/stop_daemon.log.png)
+
+4. menghentikan proses user
+
+![](assets/soal_4/fail_user.png)
+
+5. mengembalikan proses user
+
+![](assets/soal_4/revert_user.png)
+
+6. mencatat penggunaan debugmon ke dalam file log
+
+![](assets/soal_4/debugmon.log.png)

@@ -225,6 +225,7 @@ void password_check() {
 8. Melakukan Password Checking
 
    ![](assets/soal_1/password_check.png)
+   ![](assets/soal_1/berhasil.png)
 
 ### Soal 2
 

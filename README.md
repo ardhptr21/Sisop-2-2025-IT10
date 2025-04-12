@@ -20,11 +20,13 @@ D. Decode the file
 E. Password Check
 
 ##### Help Command
+```c
 ./action              
 ./action -m Filter    
 ./action -m Combine   
 ./action -m Decode    
 ./action -m Check 
+```
 
 A.
 ```c
@@ -194,6 +196,13 @@ void password_check() {
     }
 }
 ```
+
+#### Output
+1. Melakukan inisialisi untuk mendownload ketika tidak ada folder **Clues**
+2. Melakukan filterisasi file Valid ke folder Filtered
+3. Menggabungkan isi file ke Combined.txt
+4. Melakukan Decode File Combined.txt (ROT13) lalu dimasukkan ke Decoded.txt
+5. Melakukan Password Checking
 
 ### Soal 2
 

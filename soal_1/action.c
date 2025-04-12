@@ -1,12 +1,13 @@
+#define _DEFAULT_SOURCE
+#include <ctype.h>
+#include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <dirent.h>
-#include <ctype.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 #include <sys/wait.h>
+#include <unistd.h>
 
 #define ZIP_FILE "Clues.zip"
 #define ZIP_URL "https://drive.usercontent.google.com/u/0/uc?id=1xFn1OBJUuSdnApDseEczKhtNzyGekauK&export=download"
@@ -70,11 +71,11 @@ void filter_files() {
         dir = opendir(subdirs[i]);
         if (!dir) continue;
 
-        char path[256];
+        char path[512];
         while ((entry = readdir(dir))) {
             if (is_valid_file(entry->d_name)) {
                 snprintf(path, sizeof(path), "%s/%s", subdirs[i], entry->d_name);
-                char dest[256];
+                char dest[512];
                 snprintf(dest, sizeof(dest), "Filtered/%s", entry->d_name);
                 rename(path, dest);
             } else if (entry->d_type == DT_REG) {
@@ -237,7 +238,7 @@ int main(int argc, char *argv[]) {
             print_help();  // Command tidak dikenali
         }
     } else {
-        print_help();      // Format argumen salah
+        print_help();  // Format argumen salah
     }
 
     return 0;

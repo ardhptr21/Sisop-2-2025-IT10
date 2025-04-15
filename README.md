@@ -785,7 +785,7 @@ void show_process(const char *username){
 
 **b. Memasang mata-mata dalam mode daemon**
 
-```
+```c
 void run_daemon(const char *username) {
     write_log("daemon", "RUNNING");
     pid_t pid = fork();
@@ -821,7 +821,7 @@ void run_daemon(const char *username) {
 
 **c. Menghentikan pengawasan**
 
-````
+````c
 void stop_daemon(const char *username) {
     char pid_file[64];
     snprintf(pid_file, sizeof(pid_file), "daemon_%s.pid", username);
@@ -848,7 +848,7 @@ void stop_daemon(const char *username) {
 
 **d. Menggagalkan semua proses user yang sedang berjalan**
 
-````
+````c
 void fail_user(const char *username) {
     pid_t pid = fork();
 
@@ -867,7 +867,7 @@ void fail_user(const char *username) {
 
 **e. Mengizinkan user untuk kembali menjalankan proses**
 
-````
+````c
 void revert_user(const char *username) {
     pid_t pid = fork();
 
@@ -886,7 +886,7 @@ void revert_user(const char *username) {
 
 **f. Mencatat ke dalam file log**
 
-````
+````c
 void write_log(const char *process_name, const char *status) {
     FILE *log_file = fopen("/home/asuramawaru/debugmon.log", "a");
     if (!log_file) {

@@ -166,37 +166,6 @@ void rot13_decode() {
 }
 ```
 
-E.
-```c
-void password_check() {
-    FILE *file = fopen("Decoded.txt", "r");
-    if (!file) {
-        fprintf(stderr, "Decoded.txt tidak ditemukan.\n");
-        return;
-    }
-
-    char correct_pass[256];
-    if (!fgets(correct_pass, sizeof(correct_pass), file)) {
-        fclose(file);
-        fprintf(stderr, "Gagal membaca password.\n");
-        return;
-    }
-    fclose(file);
-    correct_pass[strcspn(correct_pass, "\n")] = '\0';
-
-    char input[256];
-    printf("Masukkan password: ");
-    fgets(input, sizeof(input), stdin);
-    input[strcspn(input, "\n")] = '\0';
-
-    if (strcmp(correct_pass, input) == 0) {
-        printf("Password benar! Kamu berhasil membuka pintu Cyrus!\n");
-    } else {
-        printf("Password salah. Coba lagi!\n");
-    }
-}
-```
-
 #### Output
 
 - help
@@ -224,7 +193,6 @@ void password_check() {
    
 8. Melakukan Password Checking
 
-   ![](assets/soal_1/password_check.png)
    ![](assets/soal_1/berhasil.png)
 
 ### Soal 2

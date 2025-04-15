@@ -30,7 +30,7 @@ E. Password Check
 ./action -m Check
 ```
 
-A.
+A. Pertama-tama, program bakal mengecek apakah folder Clues sudah ada. Jika belum, maka akan mendownload file Clues.zip dari. Setelah itu, file zip-nya diunzip, dan file zip-nya dihapus.
 
 ```c
 void download_and_unzip() {
@@ -47,7 +47,7 @@ void download_and_unzip() {
 }
 ```
 
-B.
+B. Setelah berhasil di-unzip, di dalam folder Clues terdapat banyak file di subfolder ClueA, ClueB, ClueC, dan ClueD. Nah, disini kita hanya ingin mengambil file yang bentuknya memiliki nama satu karakter .txt. File yang valid akan dipindah ke folder baru yang namanya Filtered.
 
 ```c
 void filter_files() {
@@ -82,7 +82,7 @@ int cmp(const void *a, const void *b) {
 }
 ```
 
-C.
+C. File yang udah difilter tadi bakal digabung menjadi satu file yang diberi namanya Combined.txt. Penyusunannya diawali dengan File yang memiliki nama yang diawali angka digabung duluan, lalu diselang-selingi sama yang huruf. Semua isinya ditulis berurutan ke dalam file Combined.txt.
 
 ```c
 void combine_files() {
@@ -149,7 +149,7 @@ void combine_files() {
 }
 ```
 
-D.
+D. Isi Combined.txt tadi masih dalam bentuk ROT13. Sehingga dilakukan decode huruf-hurufnya, lalu menyimpan hasil decode ke file Decoded.txt. Nah, isi dari file ini yang nanti jadi password sebenarnya.
 
 ```c
 void rot13_decode() {

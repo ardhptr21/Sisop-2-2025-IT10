@@ -171,6 +171,8 @@ void rot13_decode() {
 }
 ```
 
+E. Password checking 
+
 #### Output
 
 - help

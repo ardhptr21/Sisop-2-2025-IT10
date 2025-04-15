@@ -935,6 +935,8 @@ Tidak ada kendala
 #### Penjelasan
 
 **a. Mengetahui semua aktivitas user**
+Di bagian ini kita harus menunjukkan proses yang berjalan pada user.
+Pertama kita buat `fork` untuk memisahkan prosesnya. Lalu untuk child process (pid == 0) akan menjalankan argumen yang tersimpan pada array `args`, argumen tersebut lalu akan dieksekusi oleh `execvp("ps", args);`. Untuk parent process akan akan menunggu child process berakhir sebelum menjalankan `write_log` untuk mencatat proses ke `debugmon.log`.
 
 ```c
 void show_process(const char *username){
@@ -952,6 +954,8 @@ void show_process(const char *username){
 ```
 
 **b. Memasang mata-mata dalam mode daemon**
+Di bagian ini kita diharuskan untuk membuat proses daemon dan mencatatnya ke dalam log.
+Pertama-tama kita membuat `fork`. Parent process akan dipisahkan dari terminal sejak kita hanya memerlukan child process. Selanjutnya kita membuat file yang akan menjadi wadah kita menyimpan pid dan membuka file tersebut untuk menyimpan nilai pid ke dalam file. Setelah itu kita menjalankan `setsid();` untuk membuat session baru (sejak parent process terbunuh) dan mengubah direktori user. Agar daemon tidak terikat ke terminal, kita tutup proses input/output/error. Terakhir, kita mencatat proses daemon yang sedang berjalan setiap 5 detik dengan `sleep(5);`.
 
 ```c
 void run_daemon(const char *username) {
@@ -988,6 +992,8 @@ void run_daemon(const char *username) {
 ```
 
 **c. Menghentikan pengawasan**
+Di bagian ini kita diharuskan menghentikan daemon yang sedang berjalan.
+Pertama membuka & membaca file yang menyimpan nilai pid dari daemon. Lalu menjalankan `kill` untuk membunuh pid dalam file (jika berhasil, maka file juga akan dihapus). Terakhir proses akan dicatat ke log di akhir file.
 
 ```c
 void stop_daemon(const char *username) {
@@ -1015,6 +1021,8 @@ void stop_daemon(const char *username) {
 ```
 
 **d. Menggagalkan semua proses user yang sedang berjalan**
+Di bagian ini kita diharuskan untuk menggagalkan seluruh proses user.
+Pertama-tama kita buat `fork`; Pada child process, kita akan menjalankan argumen untuk membunuh seluruh proses pada user yang dituju (yang dibungkus array args), lalu argumen tersebut dieksekusi oleh `execvp("killall", args);`. Pada parent process, kita akan menunggu child process berakhir sebelum mencatat proses ke log dan mengirim pesan sukses.
 
 ```c
 void fail_user(const char *username) {
@@ -1033,6 +1041,8 @@ void fail_user(const char *username) {
 ```
 
 **e. Mengizinkan user untuk kembali menjalankan proses**
+Di bagian ini kita me-revert kembali proses user yang digagalkan.
+Pertama-tama kita buat `fork`; Pada child process, kita menjalankan argumen untuk mengembalikan user yang kita kill (dibungkus array args), lalu dieksekusi oleh `execvp("su", args)`. Pada parent process, akan menunggu child process berakhir sebelum mencatat proses ke log dan mengirim pesan sukses.
 
 ```c
 void revert_user(const char *username) {
@@ -1051,6 +1061,8 @@ void revert_user(const char *username) {
 ```
 
 **f. Mencatat ke dalam file log**
+Di bagian ini kita diharuskan mencatat proses yang berlangsung selama menjalankan debugmon ke dalam file dengan format nama debugmon.log.
+pertama kita membuka file log (jika belum buat akan terbuat otomatis) lalu `time_t now = time(NULL);` akan mengambil waktu saat ini (dalam bentuk detik) dan `struct tm *t = localtime(&now);` akan mengubahnya menjadi waktu lokal. waktu lalu akan diubah menjadi string oleh ` strftime` dan dipanggil oleh `fprintf` sesuai format yang ditentukan.
 
 ```c
 void write_log(const char *process_name, const char *status) {

@@ -768,7 +768,7 @@ Tidak ada kendala
 
 **a. Mengetahui semua aktivitas user**
 
-```
+```c
 void show_process(const char *username){
     pid_t pid = fork();
 
@@ -908,7 +908,7 @@ void write_log(const char *process_name, const char *status) {
 ````
 
 
-###output
+#### output
 
 1. menunjukan semua list proses user
 

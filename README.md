@@ -27,7 +27,6 @@ E. Password Check
 ./action -m Filter
 ./action -m Combine
 ./action -m Decode
-./action -m Check
 ```
 
 A. Pertama-tama, program bakal mengecek apakah folder Clues sudah ada. Jika belum, maka akan mendownload file Clues.zip dari. Setelah itu, file zip-nya diunzip, dan file zip-nya dihapus.
